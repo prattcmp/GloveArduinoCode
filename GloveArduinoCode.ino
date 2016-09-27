@@ -27,6 +27,7 @@ void setup() {
                    
   Serial.begin(9600); // Serial USB is always 12MBit/sec
   Serial.setTimeout(250);
+
   pinMode(ledpin, OUTPUT);     
   for(int i = 0; i < 6; i++){
     pinMode(motorpins[i],OUTPUT);
@@ -58,7 +59,7 @@ void pulseLED(int durationms){
   delay(durationms);               // wait for a second
 }
 
-void p(char *fmt, ... ){
+void p(char const *fmt, ... ){
   char buf[128]; // resulting string limited to 128 chars
   va_list args;
   va_start (args, fmt );
@@ -67,9 +68,9 @@ void p(char *fmt, ... ){
   Serial.print(buf);
 }
 
-uint8_t theta = 0;
+uint8_t motor = 0;
 uint8_t intensity = 0;
-int8_t duration = 0;
+word duration = 0;
 
 void check_bytes(void)
 {
@@ -83,9 +84,9 @@ void check_bytes(void)
   while(Serial.available() > 0){  
     
     uint8_t byte = Serial.read();
+
     //p("R:[%d]@%d\n",byte, bytes_seen);
     if(byte == 0xFF) { // preamble byte
-       
       // This happens at the start of a set of numbers, so we prepare to take in a new data set. 
       bytes_seen = 0;
       seenFF = true;
@@ -111,9 +112,9 @@ void check_bytes(void)
       
       
       if(/*checksum == received_packet[4]*/1==1){
-        theta = constrain(received_packet[1],0,100);
+        motor = constrain(received_packet[1],0,100);
         intensity = constrain(received_packet[2],0,100);
-        duration = constrain(received_packet[3],1,100);
+        duration = constrain(received_packet[3] * 10, 1, 1000);
         p("PR: [%d][%d][%d][%d][%d]\n",received_packet[0], received_packet[1], received_packet[2], received_packet[3], received_packet[4]);
         
         
@@ -130,62 +131,60 @@ void check_bytes(void)
   } 
 }
 
+bool runSingleMotor(uint8_t motor, int intensity, word duration, word startTime)
+{
+  if (digitalRead(motor) == LOW)
+  {
+    analogWrite(motor, round(2.55 * intensity));
+  }
+
+  while (startTime + duration > millis())
+  {
+    delay(10);
+    return runSingleMotor(motor, intensity, duration, startTime);
+  }
+
+  analogWrite(motor, 0);
+  return true;
+}
+
+bool runAllMotors(int intensity, word duration, word startTime)
+{
+  for (int m = 0; m < 4; m++) {
+    analogWrite(motorpins[m], round(2.55 * intensity)); 
+  }
+
+  while (startTime + duration > millis())
+  {
+    delay(10);
+    return runAllMotors(intensity, duration, startTime);
+  }
+
+  for (int m = 0; m < 4; m++) {
+    analogWrite(motorpins[m], 0); 
+  }
+  return true;
+}
+
 // the loop routine runs over and over again forever:
 void loop() {
   
-  theta = 0;
+  motor = -1;
   intensity = 0;
   duration = 0;
   
   check_bytes(); // scan USB incoming buffer for more bytes. If a complete packet, update the three variables and continue.
   pulseLED(10);
-  static float motor_power[6]; // array for percentile power to each motor. Calculated from Theta, then scaled by intensity. For now, a simple range check.
-  float target_period_ms = 1000;
-  float high_period_ms = target_period_ms * intensity/100.0f;
   
-  float min_dist_from_angle = (100.0f/4.0f)/2.0f;
-  
-  // For each motor...
-  for(int m = 0; m < 6; m++){
-    // Write a note about this later. basically we need the motors assigned to up, down, left, right, and
-    //    not quad 1, 2, 3, 4.
-    float current_angle = m * (100.0f/4.0f);
-    
-    float dist = abs(current_angle - theta);
-        
-    if ( m == theta || theta == 5/*dist < min_dist_from_angle || (current_angle==0 && abs(100-theta) < min_dist_from_angle) */ ) {
-      digitalWrite(motorpins[m], HIGH);
-    } else {
-      digitalWrite(motorpins[m], LOW);
-    }
-    
-   
+  if (motor >= 0 && motor <= 3) {
+    runSingleMotor(motorpins[motor], intensity, duration, millis());
+  } else if (motor == 5) {
+    runAllMotors(intensity, duration, millis());
   }
 
-  int high_ms = (int)high_period_ms;
-  delay(high_ms);
-  for(int m = 0; m < 4; m++){
-    digitalWrite(motorpins[m],LOW); 
-  }
   
-  int low_ms = (int)target_period_ms - high_ms;
-  //delay(low_ms);
-  if(duration > 0){
-   duration = (int16_t) duration - (int16_t)(low_ms + high_ms)*10; 
+  for (int m = 0; m < 6; m++) {
+    digitalWrite(motorpins[m], LOW); 
   }
+
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
