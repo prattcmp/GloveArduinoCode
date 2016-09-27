@@ -18,8 +18,9 @@
 int ledpin = 13;
 // MOT0 - 3 MOT1 - 8 MOT2 - 12 MOT3 - 23
 int motorpins[6] = {
-  3,8,12,23,19,14}; // motor driver pins 0 through 5, ideally spaced 60 degrees apart
+  3,8,12,23,19,14 }; // motor driver pins 0 through 5, ideally spaced 60 degrees apart
 char print_buffer[64];
+int intensity_scalar = 10;
 float distance_threshold = 40;
 
 // the setup routine runs once when you press reset:
@@ -131,38 +132,43 @@ void check_bytes(void)
   } 
 }
 
-bool runSingleMotor(uint8_t motor, int intensity, word duration, word startTime)
+void digitalWriteAll(uint8_t state)
 {
-  if (digitalRead(motor) == LOW)
+  for (int m = 0; m < 4; m++)
   {
-    analogWrite(motor, round(2.55 * intensity));
+    digitalWrite(motorpins[m], state);
+  }
+}
+
+bool runSingleMotor(uint8_t motor, int intensity, word duration, word start_time)
+{
+  int cycle_time = intensity_scalar * intensity;
+  
+  while (start_time + duration > millis())
+  {
+    digitalWrite(motor, HIGH);
+    delayMicroseconds(cycle_time);
+    digitalWrite(motor, LOW);
+    delayMicroseconds((100 * intensity_scalar) - cycle_time);
   }
 
-  while (startTime + duration > millis())
-  {
-    delay(10);
-    return runSingleMotor(motor, intensity, duration, startTime);
-  }
-
-  analogWrite(motor, 0);
+  digitalWrite(motor, LOW);
   return true;
 }
 
-bool runAllMotors(int intensity, word duration, word startTime)
+bool runAllMotors(int intensity, word duration, word start_time)
 {
-  for (int m = 0; m < 4; m++) {
-    analogWrite(motorpins[m], round(2.55 * intensity)); 
+  int cycle_time = intensity_scalar * intensity;
+  
+  while (start_time + duration > millis())
+  {   
+    digitalWriteAll(HIGH);
+    delayMicroseconds(cycle_time);
+    digitalWriteAll(LOW);
+    delayMicroseconds((100 * intensity_scalar) - cycle_time);
   }
 
-  while (startTime + duration > millis())
-  {
-    delay(10);
-    return runAllMotors(intensity, duration, startTime);
-  }
-
-  for (int m = 0; m < 4; m++) {
-    analogWrite(motorpins[m], 0); 
-  }
+  digitalWriteAll(LOW);
   return true;
 }
 
@@ -183,8 +189,6 @@ void loop() {
   }
 
   
-  for (int m = 0; m < 6; m++) {
-    digitalWrite(motorpins[m], LOW); 
-  }
+  digitalWriteAll(LOW);
 
 }
