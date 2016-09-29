@@ -24,9 +24,10 @@ int motorpins[6] = {
 // Pin Mapping for Dev Glove: MOT0 - 3 MOT1 - 8 MOT2 - 12 MOT4 - 19
 int motorpins[6] = {
     3,8,12,19,23,14 };
-    
+// Play with this
+word const intensity_scale = 10;
+
 char print_buffer[64];
-int intensity_scale = 10;
 float distance_threshold = 40;
 
 // the setup routine runs once when you press reset:
@@ -158,7 +159,7 @@ void runSingleMotor(uint8_t motor, int intensity, word duration, word start_time
   {
     // Pulse the motor based on our duty cycle
     digitalWriteFast(motor, HIGH);
-    delayMicroseconds((word)cycle_time);
+    delayMicroseconds(cycle_time);
 
     digitalWriteFast(motor, LOW);
     delayMicroseconds((100 * intensity_scale) - cycle_time);
