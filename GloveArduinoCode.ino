@@ -16,11 +16,17 @@
 
 // Pin 13 has an LED connected
 int ledpin = 13;
-// MOT0 - 3 MOT1 - 8 MOT2 - 12 MOT3 - 23
+
+/* Pin Mapping for IST Glove: MOT0 - 3 MOT1 - 8 MOT2 - 12 MOT3 - 23
 int motorpins[6] = {
-  3,8,12,23,19,14 }; // motor driver pins 0 through 5, ideally spaced 60 degrees apart
+  3,8,12,23,19,14 }; // motor driver pins 0 through 5, ideally spaced 60 degrees apart 
+*/
+// Pin Mapping for Dev Glove: MOT0 - 3 MOT1 - 8 MOT2 - 12 MOT4 - 19
+int motorpins[6] = {
+    3,8,12,19,23,14 };
+    
 char print_buffer[64];
-int intensity_scalar = 10;
+int intensity_scale = 10;
 float distance_threshold = 40;
 
 // the setup routine runs once when you press reset:
@@ -132,57 +138,68 @@ void check_bytes(void)
   } 
 }
 
+// Write to every motor
 void digitalWriteAll(uint8_t state)
 {
-  for (int m = 0; m < 4; m++)
+  for (int m = 0; m < 5; m++)
   {
-    digitalWrite(motorpins[m], state);
+    digitalWriteFast(motorpins[m], state);
   }
 }
 
-bool runSingleMotor(uint8_t motor, int intensity, word duration, word start_time)
+// Run an individual motor with manual PWM
+void runSingleMotor(uint8_t motor, int intensity, word duration, word start_time)
 {
-  int cycle_time = intensity_scalar * intensity;
-  
+  // Calculate length of the duty cycle
+  word cycle_time = intensity_scale * intensity;
+
+  // Keep running until the full duration has passed
   while (start_time + duration > millis())
   {
-    digitalWrite(motor, HIGH);
-    delayMicroseconds(cycle_time);
-    digitalWrite(motor, LOW);
-    delayMicroseconds((100 * intensity_scalar) - cycle_time);
+    // Pulse the motor based on our duty cycle
+    digitalWriteFast(motor, HIGH);
+    delayMicroseconds((word)cycle_time);
+
+    digitalWriteFast(motor, LOW);
+    delayMicroseconds((100 * intensity_scale) - cycle_time);
   }
 
+  // Make sure our motor is off
   digitalWrite(motor, LOW);
-  return true;
 }
 
-bool runAllMotors(int intensity, word duration, word start_time)
+// Run every motor with individual PWM
+void runAllMotors(int intensity, word duration, word start_time)
 {
-  int cycle_time = intensity_scalar * intensity;
-  
+  // Calculate length of the duty cycle
+  word cycle_time = intensity_scale * intensity;
+
+  // Keep running until the full duration has passed
   while (start_time + duration > millis())
   {   
+    // Pulse the motors based on our duty cycle
     digitalWriteAll(HIGH);
     delayMicroseconds(cycle_time);
+    
     digitalWriteAll(LOW);
-    delayMicroseconds((100 * intensity_scalar) - cycle_time);
+    delayMicroseconds((100 * intensity_scale) - cycle_time);
   }
-
+  
+  // Make sure our motors are off
   digitalWriteAll(LOW);
-  return true;
 }
 
 // the loop routine runs over and over again forever:
 void loop() {
-  
   motor = -1;
   intensity = 0;
   duration = 0;
   
   check_bytes(); // scan USB incoming buffer for more bytes. If a complete packet, update the three variables and continue.
   pulseLED(10);
-  
-  if (motor >= 0 && motor <= 3) {
+
+  // Should run an individual motor or every motor?
+  if (motor >= 0 && motor <= 4) {
     runSingleMotor(motorpins[motor], intensity, duration, millis());
   } else if (motor == 5) {
     runAllMotors(intensity, duration, millis());
@@ -190,5 +207,4 @@ void loop() {
 
   
   digitalWriteAll(LOW);
-
 }
