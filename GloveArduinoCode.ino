@@ -18,13 +18,15 @@
 // Pin 13 has an LED connected
 int ledpin = 13;
 
-/* Pin Mapping for IST Glove: MOT0 - 3 MOT1 - 8 MOT2 - 12 MOT3 - 23
+// Pin Mapping for IST Glove: MOT0 - 3 MOT1 - 8 MOT2 - 12 MOT3 - 23
 int motorpins[6] = {
   3,8,12,23,19,14 }; // motor driver pins 0 through 5, ideally spaced 60 degrees apart 
-*/
-// Pin Mapping for Dev Glove: MOT0 - 3 MOT1 - 8 MOT2 - 12 MOT4 - 19
+
+/* Pin Mapping for Dev Glove: MOT0 - 3 MOT1 - 8 MOT2 - 12 MOT4 - 19
 int motorpins[6] = {
     3,8,12,19,23,14 };
+*/
+
 // Play with this
 word const intensity_scale = 10;
 
@@ -50,7 +52,9 @@ void setup() {
   digitalWrite(ledpin, LOW);    // turn the LED off by making the voltage LOW
   delay(500);  // wait for a second
 
-  // TEST used to determine which motors are which
+  digitalWriteAll(LOW);
+  
+// TEST used to determine which motors are which
 //  while(1){
 //    for (int i = 0; i < 4; i++){
 //      digitalWrite(motorpins[i],HIGH);
@@ -107,9 +111,6 @@ void check_bytes(void)
     }
     // If we found the full number of bytes expected.
     if(seenFF && bytes_seen == num_characters) {
-      
-      
-      
       // Generate the checksum to check that our data is correct.
       int checksum_int = (int) received_packet[0] + (int) received_packet[1] + (int) received_packet[2] + (int) received_packet[3];
       uint8_t checksum = checksum_int & 0xFF;
@@ -125,8 +126,6 @@ void check_bytes(void)
         intensity = constrain(received_packet[2],0,100);
         duration = constrain(received_packet[3] * 10, 1, 1000);
         p("PR: [%d][%d][%d][%d][%d]\n",received_packet[0], received_packet[1], received_packet[2], received_packet[3], received_packet[4]);
-        
-        
       } 
       else {
         p("ERR: [%d][%d][%d][%d][%d]\n",received_packet[0], received_packet[1], received_packet[2], received_packet[3], received_packet[4]);
@@ -156,18 +155,19 @@ void runSingleMotor(uint8_t motor, int intensity, word duration, word start_time
   word cycle_time = intensity_scale * intensity;
 
   // Keep running until the full duration has passed
-  while (start_time + duration > millis())
-  {
+  while(start_time + duration > millis())
+  { 
     // Pulse the motor based on our duty cycle
     digitalWriteFast(motor, HIGH);
     delayMicroseconds(cycle_time);
 
+    if(Serial.available() > 0) {
+      break;
+    }
+    
     digitalWriteFast(motor, LOW);
     delayMicroseconds((100 * intensity_scale) - cycle_time);
   }
-
-  // Make sure our motor is off
-  digitalWrite(motor, LOW);
 }
 
 // Run every motor with individual PWM
@@ -177,18 +177,18 @@ void runAllMotors(int intensity, word duration, word start_time)
   word cycle_time = intensity_scale * intensity;
 
   // Keep running until the full duration has passed
-  while (start_time + duration > millis())
-  {   
+  while(start_time + duration > millis()) { 
     // Pulse the motors based on our duty cycle
     digitalWriteAll(HIGH);
     delayMicroseconds(cycle_time);
+
+    if(Serial.available() > 0) {
+      break;
+    }
     
     digitalWriteAll(LOW);
     delayMicroseconds((100 * intensity_scale) - cycle_time);
   }
-  
-  // Make sure our motors are off
-  digitalWriteAll(LOW);
 }
 
 // the loop routine runs over and over again forever:
@@ -207,6 +207,9 @@ void loop() {
     runAllMotors(intensity, duration, millis());
   }
 
-  
-  digitalWriteAll(LOW);
+  // Make sure our motors are off if theres no bytes waiting
+  if(!(Serial.available() > 0))
+  {
+    digitalWriteAll(LOW);
+  }
 }
