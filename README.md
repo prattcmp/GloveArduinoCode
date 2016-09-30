@@ -1,7 +1,8 @@
 # Glove Listener
 Listens for incoming serial bytes that indicate which motor(s) should vibrate to provide haptic feedback to the user.
  
-# Packet Structure
+ 
+### Packet Structure
 Each packet is made up of 5 bytes, each of which is an 8 bit unsigned integer.
 
 The format is as follows:
