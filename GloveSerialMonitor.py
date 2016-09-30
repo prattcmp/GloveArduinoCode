@@ -1,10 +1,20 @@
+import configparser
 import string
 import threading
 import serial
 import time
 
-# Open the serial connection
-s = serial.Serial(port='/dev/cu.usbmodem457341', baudrate=9600)
+# Get current configuration
+config = configparser.ConfigParser()
+config.read('config.ini')
+
+# Check which port to use and open serial connection
+s = 0
+if (config['Serial'].getboolean('useDevGlove')):
+	s = serial.Serial(port=config['Serial']['devPort'], baudrate=9600)
+else:
+	s = serial.Serial(port=config['Serial']['livePort'], baudrate=9600)
+
 
 # Say how the data should be formatted
 print("The format for the data is \"motor,intensity,duration\"."
