@@ -3,7 +3,7 @@
   Listener is part of the VCoS NSF project, and is intended to listen for incoming serial bytes. 
  These bytes indicate which motor(s) should vibrate to provide haptic feedback to the user.
  The current interface is as follows:
- [Orientation (0..100 percent of rotation Theta. Motor 0 is 0 degrees. 8 bit unsigned int.)]
+ [Motor (0..3 or 5). Each number corresponds to a motor, or 5 for all motors. 8 bit unsigned int.)]
  [Intensity (0..100 percent). 8 bit unsigned int.]
  [Duration (1..100 percent of a second) 8-bit unsigned int.]
  These values are sent in binary packets using unsigned integer values, as follows:
@@ -12,6 +12,7 @@
 
  Authors: Greg Link
           Gus Smith <hfs5022@psu.edu>
+          Chris Pratt <cmp6048@psu.edu>
  */
 
 // Pin 13 has an LED connected
