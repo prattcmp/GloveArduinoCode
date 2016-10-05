@@ -14,13 +14,13 @@ else:
 	s = serial.Serial(port=config['Serial']['livePort'], baudrate=9600)
 
 print("Ramping up...")
-for i in range(0, 100, 2):
-	s.write(bytes([ 255, 2, i, 20, 0 ]))
+for i in range(0, 100, 10):
+	s.write(bytes([ 255, 2, i, 100, 0 ]))
 	print(i)
-	time.sleep(0.2)
+	time.sleep(1)
 	
 print("\nRamping down...")
-for i in range(100, 0, -2):
-	s.write(bytes([ 255, 2, i, 20, 0 ]))
+for i in range(100, 0, -10):
+	s.write(bytes([ 255, 2, i, 100, 0 ]))
 	print(i)
-	time.sleep(0.2)
+	time.sleep(1)
