@@ -27,7 +27,7 @@ int motorpins[6] = {
     3,8,12,19,23,14 };
 */
 
-// Play with this
+// Play with this (minimum of 3)
 word const intensity_scale = 10;
 
 char print_buffer[64];
@@ -161,6 +161,7 @@ void runSingleMotor(uint8_t motor, int intensity, word duration, word start_time
     digitalWriteFast(motor, HIGH);
     delayMicroseconds(cycle_time);
 
+    // If there's another byte waiting, read it right away
     if(Serial.available() > 0) {
       break;
     }
@@ -200,6 +201,9 @@ void loop() {
   check_bytes(); // scan USB incoming buffer for more bytes. If a complete packet, update the three variables and continue.
   pulseLED(10);
 
+  // Time-sensitive code
+  noInterrupts();
+  
   // Should run an individual motor or every motor?
   if (motor >= 0 && motor <= 4) {
     runSingleMotor(motorpins[motor], intensity, duration, millis());
@@ -207,7 +211,10 @@ void loop() {
     runAllMotors(intensity, duration, millis());
   }
 
-  // Make sure our motors are off if theres no bytes waiting
+  // Turn interrupts back on
+  interrupts();
+
+  // Make sure our motors are off if there are no bytes waiting
   if(!(Serial.available() > 0))
   {
     digitalWriteAll(LOW);
