@@ -14,6 +14,11 @@
           Gus Smith <hfs5022@psu.edu>
           Chris Pratt <cmp6048@psu.edu>
  */
+ 
+// Play with these (INTENSITY_SCALE has minimum of 3)
+#define INTENSITY_SCALE 70
+#define INTENSITY_MIN 25
+#define INTENSITY_MAX 100
 
 // Pin 13 has an LED connected
 int ledpin = 13;
@@ -26,9 +31,6 @@ int motorpins[6] = {
 int motorpins[6] = {
     3,8,12,19,23,14 };
 */
-
-// Play with this (minimum of 3)
-word const intensity_scale = 10;
 
 char print_buffer[64];
 float distance_threshold = 40;
@@ -123,8 +125,15 @@ void check_bytes(void)
       
       if(/*checksum == received_packet[4]*/1==1){
         motor = constrain(received_packet[1],0,100);
+        
         intensity = constrain(received_packet[2],0,100);
-        duration = constrain(received_packet[3] * 10, 1, 1000);
+        // Scale the range of intensity to fit between 40% and 100%
+        intensity = map(intensity, 0, 100, INTENSITY_MIN, INTENSITY_MAX);
+        
+        duration = constrain(received_packet[3],1,100);
+        // Convert 1/100 of a second into ms, then to us
+        duration *= 10 * 1000;
+        
         p("PR: [%d][%d][%d][%d][%d]\n",received_packet[0], received_packet[1], received_packet[2], received_packet[3], received_packet[4]);
       } 
       else {
@@ -148,47 +157,38 @@ void digitalWriteAll(uint8_t state)
   }
 }
 
-// Run an individual motor with manual PWM
-void runSingleMotor(uint8_t motor, int intensity, word duration, word start_time)
+// Run motors with individual PWM
+void runMotors(uint8_t motor, int intensity, word duration)
 {
+  unsigned long start_time = micros();
+  
   // Calculate length of the duty cycle
-  word cycle_time = intensity_scale * intensity;
+  word cycle_time = INTENSITY_SCALE * intensity;
 
   // Keep running until the full duration has passed
-  while(start_time + duration > millis())
-  { 
-    // Pulse the motor based on our duty cycle
-    digitalWriteFast(motor, HIGH);
+  while(start_time + duration > micros()) { 
+    // Pulse the motors based on our duty cycle
+    if (motor == 5) {
+      digitalWriteAll(HIGH);
+    }
+    else {
+      digitalWriteFast(motor, HIGH);
+    }
     delayMicroseconds(cycle_time);
 
     // If there's another byte waiting, read it right away
     if(Serial.available() > 0) {
       break;
     }
-    
-    digitalWriteFast(motor, LOW);
-    delayMicroseconds((100 * intensity_scale) - cycle_time);
-  }
-}
 
-// Run every motor with individual PWM
-void runAllMotors(int intensity, word duration, word start_time)
-{
-  // Calculate length of the duty cycle
-  word cycle_time = intensity_scale * intensity;
-
-  // Keep running until the full duration has passed
-  while(start_time + duration > millis()) { 
     // Pulse the motors based on our duty cycle
-    digitalWriteAll(HIGH);
-    delayMicroseconds(cycle_time);
-
-    if(Serial.available() > 0) {
-      break;
+    if (motor == 5) {
+      digitalWriteAll(LOW);
     }
-    
-    digitalWriteAll(LOW);
-    delayMicroseconds((100 * intensity_scale) - cycle_time);
+    else {
+      digitalWriteFast(motor, LOW);
+    }
+    delayMicroseconds((100 * INTENSITY_SCALE) - cycle_time);
   }
 }
 
@@ -201,18 +201,11 @@ void loop() {
   check_bytes(); // scan USB incoming buffer for more bytes. If a complete packet, update the three variables and continue.
   pulseLED(10);
 
-  // Time-sensitive code
-  noInterrupts();
-  
-  // Should run an individual motor or every motor?
-  if (motor >= 0 && motor <= 4) {
-    runSingleMotor(motorpins[motor], intensity, duration, millis());
-  } else if (motor == 5) {
-    runAllMotors(intensity, duration, millis());
-  }
+  // Set the motor based on the motor pins
+  motor = (motor != 5 ? motorpins[motor] : 5);
 
-  // Turn interrupts back on
-  interrupts();
+  // Run the motor(s)
+  runMotors(motor, intensity, duration);
 
   // Make sure our motors are off if there are no bytes waiting
   if(!(Serial.available() > 0))
