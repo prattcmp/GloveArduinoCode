@@ -126,7 +126,7 @@ void check_bytes(void)
         motor = constrain(received_packet[1],0,5);
         
         intensity = constrain(received_packet[2],0,100);
-        // Scale the range of intensity to fit between 40% and 100%
+        // Scale the intensity to fit between INTENSITY_MIN and INTENSITY_MAX
         intensity = map(intensity, 0, 100, INTENSITY_MIN, INTENSITY_MAX);
         
         duration = constrain(received_packet[3],1,100);
@@ -187,7 +187,23 @@ void runMotors(uint8_t motor, int intensity, word duration)
     else {
       digitalWriteFast(motor, LOW);
     }
-    delayMicroseconds((100 * INTENSITY_SCALE) - cycle_time);
+
+    // This algorithm breaks up the delays into chunks to keep checking
+    // for the right time to stop the loop.
+    // The shorter our delay, the less we have to break up the delays
+    int iterations = map(intensity, INTENSITY_MIN, INTENSITY_MAX, 
+                         INTENSITY_MIN, INTENSITY_MAX * 2);
+    for(uint8_t i = 0; i < iterations; i++)
+    {
+      delayMicroseconds(((100 * INTENSITY_SCALE) - cycle_time) / iterations);
+      
+      if(start_time + duration < micros()) {
+        break;
+      }
+    }
+
+    // If the above breaks, just use this:
+    // delayMicroseconds(((100 * INTENSITY_SCALE) - cycle_time));
   }
 }
 
