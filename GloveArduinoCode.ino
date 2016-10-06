@@ -35,6 +35,10 @@ int motorpins[6] = {
 char print_buffer[64];
 float distance_threshold = 40;
 
+uint8_t motor = 7;
+uint8_t intensity = 0;
+word duration = 0;
+
 // the setup routine runs once when you press reset:
 void setup() {
                    
@@ -83,14 +87,9 @@ void p(char const *fmt, ... ){
   Serial.print(buf);
 }
 
-uint8_t motor = 0;
-uint8_t intensity = 0;
-word duration = 0;
-
 void check_bytes(void)
 {
-  static int8_t received_packet [5] = {
-    0,0,0          }; //array for the getc
+  static int8_t received_packet[5] = {0,0,0}; //array for the getc
   static int8_t bytes_seen = 0;
   static bool seenFF = false;
   int8_t num_characters = 5;
@@ -124,7 +123,7 @@ void check_bytes(void)
       
       
       if(/*checksum == received_packet[4]*/1==1){
-        motor = constrain(received_packet[1],0,100);
+        motor = constrain(received_packet[1],0,5);
         
         intensity = constrain(received_packet[2],0,100);
         // Scale the range of intensity to fit between 40% and 100%
@@ -134,10 +133,10 @@ void check_bytes(void)
         // Convert 1/100 of a second into ms, then to us
         duration *= 10 * 1000;
         
-        p("PR: [%d][%d][%d][%d][%d]\n",received_packet[0], received_packet[1], received_packet[2], received_packet[3], received_packet[4]);
+        p("PR: [%d][%d][%d][%d][%d]\n", received_packet[0], received_packet[1], received_packet[2], received_packet[3], received_packet[4]);
       } 
       else {
-        p("ERR: [%d][%d][%d][%d][%d]\n",received_packet[0], received_packet[1], received_packet[2], received_packet[3], received_packet[4]);
+        p("ERR: [%d][%d][%d][%d][%d]\n", received_packet[0], received_packet[1], received_packet[2], received_packet[3], received_packet[4]);
       }
       bytes_seen = 0;
       seenFF = false;
@@ -168,7 +167,7 @@ void runMotors(uint8_t motor, int intensity, word duration)
   // Keep running until the full duration has passed
   while(start_time + duration > micros()) { 
     // Pulse the motors based on our duty cycle
-    if (motor == 5) {
+    if(motor == 5) {
       digitalWriteAll(HIGH);
     }
     else {
@@ -182,7 +181,7 @@ void runMotors(uint8_t motor, int intensity, word duration)
     }
 
     // Pulse the motors based on our duty cycle
-    if (motor == 5) {
+    if(motor == 5) {
       digitalWriteAll(LOW);
     }
     else {
@@ -194,19 +193,20 @@ void runMotors(uint8_t motor, int intensity, word duration)
 
 // the loop routine runs over and over again forever:
 void loop() {
-  motor = -1;
+  motor = 7;
   intensity = 0;
   duration = 0;
   
   check_bytes(); // scan USB incoming buffer for more bytes. If a complete packet, update the three variables and continue.
   pulseLED(10);
 
-  // Set the motor based on the motor pins
-  motor = (motor != 5 ? motorpins[motor] : 5);
-
-  // Run the motor(s)
-  runMotors(motor, intensity, duration);
-
+  // Run the motors
+  if (motor != 7) {
+    // Set the proper motor based on the motor pins
+    motor = (motor != 5 ? motorpins[motor] : 5);
+  
+    runMotors(motor, intensity, duration);
+  }
   // Make sure our motors are off if there are no bytes waiting
   if(!(Serial.available() > 0))
   {
