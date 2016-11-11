@@ -164,6 +164,9 @@ void runMotors(uint8_t motor, int intensity, word duration)
   // Calculate length of the duty cycle
   word cycle_time = INTENSITY_SCALE * intensity;
 
+  // Make sure every motor is off when running a new motor
+  digitalWriteAll(LOW);
+
   // Keep running until the full duration has passed
   while(start_time + duration > micros()) { 
     // Pulse the motors based on our duty cycle
